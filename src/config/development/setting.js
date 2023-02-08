@@ -1,12 +1,12 @@
-export default {
+module.exports = {
   debug: true,
-  apiDir: 'src/router',
-  staticDir: 'src/static',
-  log: {
+  apiDir: '/src/api',
+  staticDir: '/src/static',
+  logger: {
     level: 'INFO',
     dir: 'src/logs',
-    sizeLimit: 1024 * 1024 * 5,
+    limit: 1024 * 1024 * 5,
     requestLog: true,
-    file: false
-  }
+    file: true,
+  },
 }
