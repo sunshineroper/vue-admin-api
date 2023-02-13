@@ -1,5 +1,5 @@
 import validator from 'validator'
-import { Validator, Rule } from '../util/validator'
+import { Rule, Validator } from 'koa-cms-lib'
 export class NewGroupValidator extends Validator {
   constructor() {
     super()
@@ -9,16 +9,15 @@ export class NewGroupValidator extends Validator {
 
   async validatePermissionIds(val) {
     const ids = val.body.permission_ids
-    if (!ids || !Array.isArray(ids)) {
+    if (!ids || !Array.isArray(ids))
       return [false, '请勾选至少一个权限']
-    }
+
     for (let id of ids) {
-      if (typeof id === 'number') {
+      if (typeof id === 'number')
         id = String(id)
-      }
-      if (!validator.isInt(id, { min: 1 })) {
+
+      if (!validator.isInt(id, { min: 1 }))
         return [false, '每个id值必须为正整数']
-      }
     }
     return true
   }
@@ -39,18 +38,18 @@ export class BatchDeleteMenuIdsValidator extends Validator {
   constructor() {
     super()
   }
+
   async validatePermissionIds(val) {
     const ids = val.body.ids
-    if (!ids || !Array.isArray(ids)) {
+    if (!ids || !Array.isArray(ids))
       return [false, '请至少选择一个菜单']
-    }
+
     for (let id of ids) {
-      if (typeof id === 'number') {
+      if (typeof id === 'number')
         id = String(id)
-      }
-      if (!validator.isInt(id, { min: 1 })) {
+
+      if (!validator.isInt(id, { min: 1 }))
         return [false, '每个id必须为数值']
-      }
     }
     return true
   }

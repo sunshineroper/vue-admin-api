@@ -1,101 +1,103 @@
-import { has, set, get } from 'lodash'
-
-const { Op } = require('sequelize')
-const { GroupModel } = require('../model/group')
-const { GroupMenuPermissionModel } = require('../model/group-menu-permission')
-const { PermissionModel } = require('../model/permission')
-const { Forbidden, NotFound } = require('../lib/http-exception')
-const { GroupPermissionModel } = require('../model/group-permission')
-
+import { NotFound } from 'koa-cms-lib'
+import { Op } from 'sequelize'
+import { GroupModel } from '../model/group'
+import { GroupMenuPermissionModel } from '../model/group-menu-permission'
+import { PermissionModel } from '../model/permission'
+import { GroupPermissionModel } from '../model/group-permission'
+import { sequelize } from '../lib/db'
 import { MountType } from '@/lib/type.js'
-const { sequelize } = require('../lib/db')
 class AdminDao {
-  async getAllPermissions(ctx) {
+  async getAllPermissions() {
     // 查询所有可分配的权限
-    let allPermisions = await PermissionModel.findAll({
+    const allPermissions = await PermissionModel.findAll({
       where: {
-        mount: MountType.Mount
-      }
+        mount: MountType.Mount,
+      },
     })
-    return this.formatPermission(allPermisions)
+    return this.formatPermission(allPermissions)
   }
+
   formatPermission(data) {
-    let map = {}
-    data.forEach(item => {
-      let module = item.dataValues.module
-      let _item = item.dataValues
+    const map = {}
+    data.forEach((item) => {
+      const module = item.dataValues.module
+      const _item = item.dataValues
       if (!map[module]) {
         map[module] = {
           name: module,
           children: [
             {
               id: _item.id,
-              name: _item.name
-            }
-          ]
+              name: _item.name,
+            },
+          ],
         }
-      } else {
+      }
+      else {
         map[module].children.push({
           id: _item.id,
-          name: _item.name
+          name: _item.name,
         })
       }
     })
-    let arr = []
+    const arr = []
     Reflect.ownKeys(map).forEach(key => arr.push(map[key]))
     return arr
   }
-  async dispatchMenuPermissions(v) {
+
+  async dispatchMenuPermissions(ctx, v) {
     const id = v.get('path.id')
     const menu_ids = v.get('body.menu_ids')
     const group = await GroupModel.findByPk(id)
-    if (!group) throw new NotFound(10024)
+    if (!group)
+      throw new NotFound(10024)
     let transaction
     try {
       transaction = await sequelize.transaction()
       await GroupMenuPermissionModel.destroy(
         {
           where: {
-            group_id: id
-          }
+            group_id: id,
+          },
         },
-        transaction
+        transaction,
       )
-      for (let menuId of menu_ids) {
+      for (const menuId of menu_ids) {
         await GroupMenuPermissionModel.create(
           {
             menu_id: menuId,
-            group_id: id
+            group_id: id,
           },
-          transaction
+          transaction,
         )
       }
       await transaction.commit()
-    } catch (error) {
-      console.log(error)
+    }
+    catch (error) {
+      ctx.logger.error(error)
       transaction && transaction.rollback()
     }
   }
 
-  async dispatchPermissions(v) {
+  async dispatchPermissions(ctx, v) {
     const group_id = v.get('path.id')
     const permission_ids = v.get('body.permission_ids')
     const group = await GroupModel.findByPk(group_id)
     if (!group) {
       throw new NotFound({
-        code: 10024
+        code: 10024,
       })
     }
     for (const id of permission_ids) {
       const permission = await PermissionModel.findOne({
         where: {
           id,
-          mount: MountType.Mount
-        }
+          mount: MountType.Mount,
+        },
       })
       if (!permission) {
         throw new NotFound({
-          code: 10231
+          code: 10231,
         })
       }
     }
@@ -105,28 +107,30 @@ class AdminDao {
       await GroupPermissionModel.destroy(
         {
           where: {
-            group_id: group_id
-          }
+            group_id,
+          },
         },
         {
-          transation
-        }
+          transation,
+        },
       )
       for (const id of permission_ids) {
         await GroupPermissionModel.create(
           {
             group_id: group.id,
-            permission_id: id
+            permission_id: id,
           },
           {
-            transation
-          }
+            transation,
+          },
         )
       }
       await transation.commit()
-    } catch (err) {
-      console.log(err)
-      if (transation) await transation.rollback()
+    }
+    catch (err) {
+      ctx.logger.error(err)
+      if (transation)
+        await transation.rollback()
     }
   }
 
@@ -135,19 +139,19 @@ class AdminDao {
     const group = await GroupModel.findByPk(info.group_id)
     if (!group) {
       throw new NotFound({
-        code: 10024
+        code: 10024,
       })
     }
     for (const id of info.permission_ids || []) {
       const permission = await PermissionModel.findOne({
         where: {
           id,
-          mount: MountType.Mount
-        }
+          mount: MountType.Mount,
+        },
       })
       if (!permission) {
         throw new NotFound({
-          code: 10231
+          code: 10231,
         })
       }
     }
@@ -155,9 +159,9 @@ class AdminDao {
       where: {
         group_id: group.id,
         permission_id: {
-          [Op.in]: info.permission_ids
-        }
-      }
+          [Op.in]: info.permission_ids,
+        },
+      },
     })
   }
 }

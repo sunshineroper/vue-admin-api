@@ -1,8 +1,9 @@
 import { Op } from 'sequelize'
+import { RepeatException } from 'koa-cms-lib'
+import { has, set } from 'lodash'
 import { GroupMenuPermissionModel } from '@/model/group-menu-permission'
 import { MenuModel } from '@/model/menu'
-import { GroupLevel, MountType, MENU_HIDDEN, sequelize, RepeatException, NotFound } from '@/lib'
-import { has, set } from 'lodash'
+import { GroupLevel, MENU_HIDDEN, MountType, NotFound, sequelize } from '@/lib'
 const { UserModel, UserIdentityModel } = require('../model/user')
 const { UserGroupModel } = require('../model/user-group')
 const { GroupModel } = require('../model/group')
@@ -18,41 +19,44 @@ class UserDao {
     const { accessToken, refreshToken } = getTokens(user.user_id)
     return {
       accessToken,
-      refreshToken
+      refreshToken,
     }
   }
-  async register(v) {
+
+  async register(ctx, v) {
     const email = v.get('body.email')
     const groupIds = v.get('body.groupIds')
     const username = v.get('body.username')
-    let user = await UserModel.findOne({
+    const user = await UserModel.findOne({
       where: {
-        username: username
-      }
+        username,
+      },
     })
     if (user) {
+      // eslint-disable-next-line no-new
       new RepeatException({
-        code: 10071
+        code: 10071,
       })
     }
     if (email) {
-      let user = await UserModel.findOne({
+      const user = await UserModel.findOne({
         where: {
-          email: email
-        }
+          email,
+        },
       })
       if (user) {
+        // eslint-disable-next-line no-new
         new RepeatException({
-          code: 10076
+          code: 10076,
         })
       }
     }
     if (groupIds && groupIds.length > 0) {
       for (const id of groupIds) {
-        let group = await GroupModel.findByPk(id)
+        const group = await GroupModel.findByPk(id)
         if (!group) {
           throw new NotFound({
-            code: 10023
+            code: 10023,
           })
         }
       }
@@ -61,125 +65,132 @@ class UserDao {
     let transaction
     try {
       transaction = await sequelize.transaction()
-      let user = {
-        username: username
+      const user = {
+        username,
       }
-      if (email) {
+      if (email)
         user.email = email
-      }
-      let { id: user_id } = await UserModel.create(user, { transaction })
+
+      const { id: user_id } = await UserModel.create(user, { transaction })
       await UserIdentityModel.create(
         {
           user_id,
           identifier: username,
           identity_type: 'USERNAME_PASSWORD',
-          credential: generate(v.get('body.password'))
+          credential: generate(v.get('body.password')),
         },
         {
-          transaction
-        }
+          transaction,
+        },
       )
       if (groupIds && groupIds.length > 0) {
         for (const id of groupIds) {
           await UserGroupModel.create(
             {
               user_id,
-              group_id: id
+              group_id: id,
             },
             {
-              transaction
-            }
+              transaction,
+            },
           )
         }
-      } else {
+      }
+      else {
         const guest = await GroupModel.findOne({
           where: {
-            level: GroupLevel.Guest
-          }
+            level: GroupLevel.Guest,
+          },
         })
         await UserGroupModel.create({
           user_id,
-          group_id: guest.id
+          group_id: guest.id,
         })
       }
 
       await transaction.commit()
-    } catch (error) {
-      console.log(error)
-      if (transaction) await transaction.rollback()
+      return true
+    }
+    catch (error) {
+      if (transaction)
+        await transaction.rollback()
+      ctx.logger.error(error)
     }
   }
+
   async getUsers(v) {
     const page = v.get('query.page')
     const count1 = v.get('query.count')
     const condition = {
       where: {
         username: {
-          [Op.ne]: 'root'
-        }
+          [Op.ne]: 'root',
+        },
       },
       offset: page * count1,
-      limit: count1
+      limit: count1,
     }
     const { rows, count } = await UserModel.findAndCountAll(condition)
     for (const user of rows) {
       const userGroup = await UserGroupModel.findAll({
         where: {
-          user_id: user.id
-        }
+          user_id: user.id,
+        },
       })
       const groupIds = userGroup.map(v => v.group_id)
       const groups = await GroupModel.findAll({
         where: {
           id: {
-            [Op.in]: groupIds
-          }
-        }
+            [Op.in]: groupIds,
+          },
+        },
       })
       set(user, 'groups', groups)
     }
     return {
       users: rows,
-      total: count
+      total: count,
     }
   }
 
   async deleteUser(ctx) {
-    let id = ctx.params.id
-    let user = await UserModel.findByPk(id)
+    const id = ctx.params.id
+    const user = await UserModel.findByPk(id)
     if (!user) {
       throw new NotFound({
-        code: 10021
+        code: 10021,
       })
     }
-    let user_group = await UserGroupModel.findOne({
+    const user_group = await UserGroupModel.findOne({
       where: {
-        user_id: id
-      }
+        user_id: id,
+      },
     })
     let transaction
     try {
       transaction = await sequelize.transaction()
       await user.destroy({
-        transaction
+        transaction,
       })
       await user_group.destroy({
-        transaction
+        transaction,
       })
       await UserIdentityModel.destroy(
         {
           where: {
-            user_id: id
-          }
+            user_id: id,
+          },
         },
         {
-          transaction
-        }
+          transaction,
+        },
       )
       await transaction.commit()
-    } catch (error) {
+    }
+    catch (error) {
       console.log(error)
-      if (transaction) await transaction.rollback()
+      if (transaction)
+        await transaction.rollback()
     }
   }
 
@@ -187,21 +198,21 @@ class UserDao {
     const userid = v.get('path.id')
     const groupIds = v.get('body.group_ids')
     const user = UserGroupModel.findByPk(userid)
-    if (!user) {
+    if (!user)
       return new NotFound(10024)
-    }
+
     let transaction
     try {
       transaction = await sequelize.transaction()
       await UserGroupModel.destroy({
         where: {
-          user_id: userid
+          user_id: userid,
         },
-        transaction
+        transaction,
       })
       if (groupIds && groupIds.length > 0) {
-        for (let id of groupIds) {
-          let group = await GroupModel.findByPk(id)
+        for (const id of groupIds) {
+          const group = await GroupModel.findByPk(id)
           if (!group) {
             ctx.success(new NotFound())
             return
@@ -209,35 +220,38 @@ class UserDao {
           await UserGroupModel.create(
             {
               group_id: id,
-              user_id: userid
+              user_id: userid,
             },
-            transaction
+            transaction,
           )
         }
         await transaction.commit()
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.log(error)
       transaction && transaction.rollback()
     }
   }
+
   async updateUser(v) {
     const userId = v.get('path.id')
     const user = await UserModel.findByPk(userId)
     if (!user) {
       throw new NotFound({
-        code: 10021
+        code: 10021,
       })
     }
     user.avatar = v.get('body.avatar')
     await user.save()
   }
+
   async deleteUser(v) {
     const userId = v.get('path.id')
     const user = await UserModel.findByPk(userId)
     if (!user) {
       throw new NotFound({
-        code: 10021
+        code: 10021,
       })
     }
     let transaction
@@ -246,25 +260,26 @@ class UserDao {
       // 从用户组里面删除
       await UserGroupModel.destroy({
         where: {
-          user_id: user.id
+          user_id: user.id,
         },
-        transaction
+        transaction,
       })
       await UserIdentityModel.destroy(
         {
           where: {
-            user_id: user.id
-          }
+            user_id: user.id,
+          },
         },
         {
-          transaction
-        }
+          transaction,
+        },
       )
       await user.destroy({
-        transaction
+        transaction,
       })
       await transaction.commit()
-    } catch (error) {
+    }
+    catch (error) {
       transaction && (await transaction.callback())
     }
   }
@@ -278,8 +293,8 @@ class UserDao {
     const user = ctx.currentUser
     const userGroup = await UserGroupModel.findAll({
       where: {
-        user_id: user.id
-      }
+        user_id: user.id,
+      },
     })
     const groupIds = userGroup.map(item => item.group_id)
 
@@ -287,9 +302,9 @@ class UserDao {
       where: {
         level: GroupLevel.Root,
         id: {
-          [Op.in]: groupIds
-        }
-      }
+          [Op.in]: groupIds,
+        },
+      },
     })
 
     set(user.dataValues, 'admin', !!root)
@@ -298,47 +313,48 @@ class UserDao {
     if (root) {
       permissons = await PermissionModel.findAll({
         where: {
-          mount: MountType.Mount
-        }
+          mount: MountType.Mount,
+        },
       })
       menus = await MenuModel.findAll({
         where: {
-          hidden: 0
-        }
+          hidden: 0,
+        },
       })
-    } else {
+    }
+    else {
       const groupPermission = await GroupPermissionModel.findAll({
         where: {
           group_id: {
-            [Op.in]: groupIds
-          }
-        }
+            [Op.in]: groupIds,
+          },
+        },
       })
       const groupPermission_ids = groupPermission.map(item => item.permission_id)
       permissons = await PermissionModel.findAll({
         where: {
           mount: MountType.Mount,
           id: {
-            [Op.in]: groupPermission_ids
-          }
-        }
+            [Op.in]: groupPermission_ids,
+          },
+        },
       })
       // 处理菜单权限
       const menuPermission = await GroupMenuPermissionModel.findAll({
         where: {
           group_id: {
-            [Op.in]: groupIds
-          }
-        }
+            [Op.in]: groupIds,
+          },
+        },
       })
       const menuPermission_ids = menuPermission.map(item => item.menu_id)
       menus = await MenuModel.findAll({
         where: {
           hidden: MENU_HIDDEN.UNHIDDEN,
           id: {
-            [Op.in]: menuPermission_ids
-          }
-        }
+            [Op.in]: menuPermission_ids,
+          },
+        },
       })
     }
     set(user.dataValues, 'menus', menus)
@@ -346,20 +362,21 @@ class UserDao {
   }
 
   formatPermissions(permissions) {
-    let map = {}
-    permissions.forEach(item => {
-      let module = item.module
+    const map = {}
+    permissions.forEach((item) => {
+      const module = item.module
       if (has(map, module)) {
         map[module].push({
           permission: item.name,
-          module
+          module,
         })
-      } else {
+      }
+      else {
         set(map, module, [
           {
             permission: item.name,
-            module
-          }
+            module,
+          },
         ])
       }
     })

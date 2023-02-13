@@ -1,18 +1,20 @@
+import { NotFound } from 'koa-cms-lib'
+import { sequelize } from '@/lib'
 const { Op } = require('sequelize')
 const { MenuModel } = require('../model/menu')
 class MenuDao {
   async createMenu(v, ctx) {
     const menu = await MenuModel.findOne({
       where: {
-        [Op.or]: [{ path: v.get('body.path') }, { name: v.get('body.name') }]
-      }
+        [Op.or]: [{ path: v.get('body.path') }, { name: v.get('body.name') }],
+      },
     })
     if (menu) {
       throw new Forbidden({
-        code: 10252
+        code: 10252,
       })
     }
-    let _menu = new MenuModel()
+    const _menu = new MenuModel()
     _menu.name = v.get('body.name')
     _menu.title = v.get('body.title')
     _menu.icon = v.get('body.icon')
@@ -28,14 +30,16 @@ class MenuDao {
     // await MenuGroupModel.create({
     // })
   }
+
   async findAllMenu(ctx) {
     return await MenuModel.findAll()
   }
+
   async deletenMenu(id) {
     const menu = await MenuModel.findByPk(id)
     if (!menu) {
       throw new NotFound({
-        code: 10253
+        code: 10253,
       })
     }
     let transaction
@@ -45,33 +49,37 @@ class MenuDao {
       await MenuModel.destroy(
         {
           where: {
-            parent_id: id
-          }
+            parent_id: id,
+          },
         },
         {
-          transaction
-        }
+          transaction,
+        },
       )
       await transaction.commit()
-    } catch (error) {
+    }
+    catch (error) {
       console.log(error)
-      if (transaction) await transaction.rollback()
+      if (transaction)
+        await transaction.rollback()
     }
   }
+
   async findMenuById(id) {
     const menu = await MenuModel.findByPk(id)
     if (!menu) {
       throw new NotFound({
-        code: 10253
+        code: 10253,
       })
     }
     return menu
   }
+
   async updateMenu(v) {
     const menu = await MenuModel.findByPk(v.get('path.id'))
     if (!menu) {
       throw new NotFound({
-        code: 10253
+        code: 10253,
       })
     }
     menu.name = v.get('body.name')
@@ -91,8 +99,8 @@ class MenuDao {
     ids = ids.map(id => +id)
     await MenuModel.destroy({
       where: {
-        [Op.or]: [{ id: { [Op.in]: [...ids] } }, { parent_id: { [Op.in]: [...ids] } }]
-      }
+        [Op.or]: [{ id: { [Op.in]: [...ids] } }, { parent_id: { [Op.in]: [...ids] } }],
+      },
     })
   }
 }

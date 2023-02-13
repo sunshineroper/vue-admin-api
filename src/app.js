@@ -19,10 +19,11 @@ const applyKoaMiddleware = (app) => {
 }
 
 const loadRouter = (app) => {
+  // eslint-disable-next-line no-new
   new Loader(app)
 }
 
-export const createApp = () => {
+export const createApp = async () => {
   const app = new Koa()
   applyExtension(app)
   applyKoaMiddleware(app)

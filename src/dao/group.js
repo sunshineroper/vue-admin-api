@@ -1,32 +1,35 @@
+import { Op } from 'sequelize'
+import { Forbidden, NotFound } from 'koa-cms-lib'
+import { set } from 'lodash'
+import { sequelize } from '@/lib'
 import { GroupModel } from '@/model/group'
 import { UserGroupModel } from '@/model/user-group'
-import { MountType, GroupLevel } from '@/lib/type.js'
+import { GroupLevel, MountType } from '@/lib/type.js'
 import { GroupMenuPermissionModel } from '@/model/group-menu-permission'
 import { GroupPermissionModel } from '@/model/group-permission'
-import { Op } from 'sequelize'
-import { set } from 'lodash'
+import { PermissionModel } from '@/model/permission'
 class GroupDao {
-  async createGrpup(v) {
+  async createGroup(v) {
     let group = await GroupModel.findOne({
       where: {
-        name: v.get('body.name')
-      }
+        name: v.get('body.name'),
+      },
     })
     if (group) {
       throw new Forbidden({
-        code: 10072
+        code: 10072,
       })
     }
     for (const id of v.get('body.permission_ids') || []) {
-      let permission = await PermissionModel.findOne({
+      const permission = await PermissionModel.findOne({
         where: {
           id,
-          mount: MountType.Mount
-        }
+          mount: MountType.Mount,
+        },
       })
       if (!permission) {
         throw new NotFound({
-          code: 10231
+          code: 10231,
         })
       }
     }
@@ -37,24 +40,26 @@ class GroupDao {
       group = await GroupModel.create(
         {
           name: v.get('body.name'),
-          info: v.get('body.info')
+          info: v.get('body.info'),
         },
-        { transaction }
+        { transaction },
       )
       for (const id of v.get('body.permission_ids') || []) {
         await GroupPermissionModel.create(
           {
             group_id: group.id,
-            permission_id: id
+            permission_id: id,
           },
           {
-            transaction
-          }
+            transaction,
+          },
         )
       }
       await transaction.commit()
-    } catch (err) {
-      if (transaction) await transaction.rollback()
+    }
+    catch (err) {
+      if (transaction)
+        await transaction.rollback()
     }
     return true
   }
@@ -63,24 +68,24 @@ class GroupDao {
     const allGroups = await GroupModel.findAll({
       where: {
         level: {
-          [Op.ne]: GroupLevel.Root
-        }
-      }
+          [Op.ne]: GroupLevel.Root,
+        },
+      },
     })
     for (const group of allGroups) {
-      let g = await GroupMenuPermissionModel.findAll({ where: { group_id: group.id } })
-      let p = await GroupPermissionModel.findAll({ where: { group_id: group.id } })
+      const g = await GroupMenuPermissionModel.findAll({ where: { group_id: group.id } })
+      const p = await GroupPermissionModel.findAll({ where: { group_id: group.id } })
       set(group, 'menu_permission', g)
       set(group, 'permission', p)
     }
     return allGroups
   }
 
-  async updateGrpup(ctx) {
+  async updateGroup(ctx) {
     const group = await GroupModel.findByPk(ctx.params.id)
     if (!group) {
       throw new NotFound({
-        code: 10024
+        code: 10024,
       })
     }
     group.name = ctx.request.body.name
@@ -92,13 +97,13 @@ class GroupDao {
     const group = await GroupModel.findByPk(v.get('path.id'))
     if (!group) {
       throw new NotFound({
-        code: 10024
+        code: 10024,
       })
     }
     const groupPermission = await GroupPermissionModel.findAll({
       where: {
-        group_id: v.get('path.id')
-      }
+        group_id: v.get('path.id'),
+      },
     })
     const permissionIds = groupPermission.map(v => v.permission_id)
 
@@ -106,19 +111,19 @@ class GroupDao {
       where: {
         mount: MountType.Mount,
         id: {
-          [Op.in]: permissionIds
-        }
-      }
+          [Op.in]: permissionIds,
+        },
+      },
     })
     return set(group.dataValues, 'permissions', permissions)
   }
 
   async removeGroup(v) {
-    let id = v.get('path.id')
+    const id = v.get('path.id')
     const group = await GroupModel.findByPk(id)
     if (!group) {
       throw new NotFound({
-        code: 10024
+        code: 10024,
       })
     }
     let transaction
@@ -126,33 +131,36 @@ class GroupDao {
       transaction = await sequelize.transaction()
       await GroupModel.destroy({
         where: {
-          id
+          id,
         },
-        transaction
+        transaction,
       })
       await GroupPermissionModel.destroy({
         where: {
-          group_id: id
+          group_id: id,
         },
-        transaction
+        transaction,
       })
       await UserGroupModel.destroy({
         where: {
-          group_id: id
+          group_id: id,
         },
-        transaction
+        transaction,
       })
       transaction.commit()
-    } catch (error) {
+    }
+    catch (error) {
       console.log(error)
-      if (transaction) await transaction.rollback()
+      if (transaction)
+        await transaction.rollback()
     }
   }
+
   async getGroupByName(ctx) {
     const group = await GroupModel.findOne({
       where: {
-        name: ctx.request.name
-      }
+        name: ctx.request.name,
+      },
     })
     return group
   }

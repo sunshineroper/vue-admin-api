@@ -1,4 +1,4 @@
-import { Validator, Rule } from '../util/validator'
+import { Validator } from 'koa-cms-lib'
 class LogFindValidator extends Validator {
   constructor() {
     super()

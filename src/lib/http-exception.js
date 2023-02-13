@@ -79,7 +79,7 @@ export const codeMessage = {
   10250: '请使用正确类型的令牌',
   10251: '请使用正确作用域的令牌',
   10252: '已存在相同的菜单名称或访问路径重复',
-  10253: '菜单不存在'
+  10253: '菜单不存在',
 }
 export class HttpException extends Error {
   constructor() {
@@ -87,6 +87,7 @@ export class HttpException extends Error {
     this.number = 500
     this.code = 9999
   }
+
   exceptionHandler(ex) {
     if (isInteger(ex)) {
       this.code = ex
@@ -98,9 +99,8 @@ export class HttpException extends Error {
       this.code = code
       this.message = codeMessage.getMessage(code)
     }
-    if (ex && ex.message) {
+    if (ex && ex.message)
       this.message = ex.message
-    }
   }
 }
 

@@ -7,6 +7,6 @@ module.exports = {
     dir: 'src/logs',
     limit: 1024 * 1024 * 5,
     requestLog: true,
-    file: true,
+    file: false,
   },
 }

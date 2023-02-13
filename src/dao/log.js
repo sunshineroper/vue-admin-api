@@ -8,39 +8,40 @@ class LogDao {
     const count1 = v.get('query.count')
     const condition = {
       offset: page * count1,
-      limit: count1
+      limit: count1,
     }
     const { count, rows } = await LogModel.findAndCountAll({
       ...condition,
-      order: [['create_date', 'DESC']]
+      order: [['create_date', 'DESC']],
     })
 
     return {
       total: count,
-      rows
+      rows,
     }
   }
+
   static async searchLogs(v) {
     // method path status_code
     const keyword = v.get('query.keyword', false, '')
     const condition = {}
-    v.get('query.start') &&
-      v.get('query.end') &&
-      set(condition, 'create_date', {
-        [Op.between]: [v.get('query.start'), v.get('query.end')]
+    v.get('query.start')
+      && v.get('query.end')
+      && set(condition, 'create_date', {
+        [Op.between]: [v.get('query.start'), v.get('query.end')],
       })
 
     const { count, rows } = await LogModel.findAndCountAll({
       where: Object.assign({}, condition, {
         message: {
-          [Op.like]: `%${keyword}%`
-        }
+          [Op.like]: `%${keyword}%`,
+        },
       }),
-      order: [['create_date', 'DESC']]
+      order: [['create_date', 'DESC']],
     })
     return {
       total: count,
-      rows
+      rows,
     }
   }
 }

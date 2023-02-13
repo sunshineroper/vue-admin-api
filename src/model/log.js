@@ -1,4 +1,4 @@
-import { Model, DataTypes } from 'sequelize'
+import { DataTypes, Model } from 'sequelize'
 import { merge } from 'lodash'
 import { sequelize } from '../lib'
 import { InforCrudMixin } from '../util/inforCrudMixin'
@@ -15,39 +15,39 @@ Log.init(
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      autoIncrement: true
+      autoIncrement: true,
     },
     message: {
-      type: DataTypes.STRING({ length: 450 })
+      type: DataTypes.STRING({ length: 450 }),
     },
     user_id: {
       type: DataTypes.INTEGER,
-      allowNull: false
+      allowNull: false,
     },
     username: {
-      type: DataTypes.STRING(20)
+      type: DataTypes.STRING(20),
     },
     status_code: {
-      type: DataTypes.INTEGER
+      type: DataTypes.INTEGER,
     },
     method: {
-      type: DataTypes.STRING(20)
+      type: DataTypes.STRING(20),
     },
     path: {
-      type: DataTypes.STRING(50)
+      type: DataTypes.STRING(50),
     },
     permission: {
-      type: DataTypes.STRING(100)
-    }
+      type: DataTypes.STRING(100),
+    },
   },
   merge(
     {
       sequelize,
       tableName: 'log',
-      modelName: 'log'
+      modelName: 'log',
     },
-    InforCrudMixin.options
-  )
+    InforCrudMixin.options,
+  ),
 )
 
 export { Log as LogModel }
