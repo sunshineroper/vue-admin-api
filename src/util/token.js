@@ -1,6 +1,6 @@
 import jwtGenerator from 'jsonwebtoken'
-import { AuthFailed, ExpiredTokenException, InvalidTokenException } from '../lib'
 import { get } from 'lodash'
+import { AuthFailed, ExpiredTokenException, InvalidTokenException } from '../lib'
 class Token {
   constructor(secret, accessExp, refreshExp) {
     secret && (this.secret = secret)
@@ -9,67 +9,73 @@ class Token {
   }
 
   createAccessToken(identity) {
-    if (!this.secret) {
+    if (!this.secret)
       throw new Eroor('secret can not be empty')
-    }
-    let exp = Math.floor(+new Date() / 1000) + this.accessExp
+
+    const exp = Math.floor(+new Date() / 1000) + this.accessExp
     return jwtGenerator.sign(
       {
         exp,
         identity,
         type: 'access',
-        scope: 'sun'
+        scope: 'sun',
       },
-      this.secret
+      this.secret,
     )
   }
 
   createRefreshToken(identity) {
-    if (!this.secret) {
+    if (!this.secret)
       throw new Eroor('secret can not be empty')
-    }
-    let exp = Math.floor(+new Date() / 1000) + this.refreshExp
+
+    const exp = Math.floor(+new Date() / 1000) + this.refreshExp
     return jwtGenerator.sign(
       {
         exp,
         identity,
         type: 'refresh',
-        scope: 'sun'
+        scope: 'sun',
       },
-      this.secret
+      this.secret,
     )
   }
 
   verifyToken(token, type = 'access') {
-    if (!this.secret) {
+    if (!this.secret)
       throw new Eroor('secret can not be empty')
-    }
+
     let decode
     try {
       decode = jwtGenerator.verify(token, this.secret)
-    } catch (error) {
+    }
+    catch (error) {
       if (error instanceof jwtGenerator.TokenExpiredError) {
         if (type === 'access') {
           throw new ExpiredTokenException({
-            code: 10051
+            code: 10051,
           })
-        } else if (type === 'refresh') {
+        }
+        else if (type === 'refresh') {
           throw new ExpiredTokenException({
-            code: 10052
+            code: 10052,
           })
-        } else {
+        }
+        else {
           throw new ExpiredTokenException()
         }
-      } else {
+      }
+      else {
         if (type === 'access') {
           throw new InvalidTokenException({
-            code: 10041
+            code: 10041,
           })
-        } else if (type === 'refresh') {
+        }
+        else if (type === 'refresh') {
           throw new InvalidTokenException({
-            code: 10042
+            code: 10042,
           })
-        } else {
+        }
+        else {
           throw new InvalidTokenException()
         }
       }
@@ -79,17 +85,17 @@ class Token {
 }
 
 const config = {
-  secret: '\x88W\xf09\x91\x07\x98\x89\x87\x96\xa0A\xc68\xf9\xecJJU\x17\xc5V\xbe\x8b\xef\xd7\xd8\xd3\xe6\x95*4',
+  secret: '\x88W\xF09\x91\x07\x98\x89\x87\x96\xA0A\xC68\xF9\xECJJU\x17\xC5V\xBE\x8B\xEF\xD7\xD8\xD3\xE6\x95*4',
   accessExp: 30 * 60,
-  refreshExp: 30 * 24 * 60 * 10
+  refreshExp: 30 * 24 * 60 * 10,
 }
 
-let jwt = new Token(config.secret, config.accessExp, config.refreshExp)
+const jwt = new Token(config.secret, config.accessExp, config.refreshExp)
 
 export function parseHeader(ctx, type = 'access') {
-  if (!ctx || !ctx.header.authorization) {
+  if (!ctx || !ctx.header.authorization)
     ctx.throw(new AuthFailed())
-  }
+
   const parts = ctx.header.authorization.split(' ')
   if (parts.length === 2) {
     const scheme = parts[0]
@@ -97,15 +103,16 @@ export function parseHeader(ctx, type = 'access') {
 
     if (/^Bearer$/i.test(scheme)) {
       const obj = jwt.verifyToken(token, type)
-      if (!get(obj, 'type') || get(obj, 'type') !== type) {
+      if (!get(obj, 'type') || get(obj, 'type') !== type)
         ctx.throw(new AuthFailed({ code: 10250 }))
-      }
-      if (!get(obj, 'scope') || get(obj, 'scope') !== 'sun') {
+
+      if (!get(obj, 'scope') || get(obj, 'scope') !== 'sun')
         ctx.throw(new AuthFailed({ code: 10251 }))
-      }
+
       return obj
     }
-  } else {
+  }
+  else {
     ctx.throw(new AuthFailed())
   }
 }

@@ -1,14 +1,13 @@
 import { Op } from 'sequelize'
-import { AuthFailed, NotFound } from 'koa-cms-lib'
+import { AuthFailed, NotFound, RefreshException, jwt } from 'koa-cms-lib'
 import { UserModel } from '@/model/user.js'
 import { GroupModel } from '@/model/group'
 import { UserGroupModel } from '@/model/user-group'
 import { PermissionModel } from '@/model/permission'
 import { GroupPermissionModel } from '@/model/group-permission'
-import { GroupLevel, RefreshException, routeMetaInfo } from '@/lib'
-import { parseHeader } from '@/util/token'
+import { GroupLevel, routeMetaInfo } from '@/lib'
 async function mountUser(ctx) {
-  const { identity } = parseHeader(ctx)
+  const { identity } = jwt.parseHeader(ctx)
   const user = await UserModel.findByPk(identity)
   if (!user) {
     throw new NotFound({
@@ -40,7 +39,7 @@ async function isAdmin(ctx) {
 export async function refreshTokenRequiredWithUnifyException(ctx, next) {
   if (ctx.method !== 'OPTIONS') {
     try {
-      const { identity } = parseHeader(ctx, 'refresh')
+      const { identity } = jwt.parseHeader(ctx, 'refresh')
       const user = await UserModel.findByPk(identity)
       if (!user) {
         throw new NotFound({

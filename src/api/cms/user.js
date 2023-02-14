@@ -1,6 +1,4 @@
-// const Router = require("koa-router");
-import { SRouter } from '@/lib'
-import { getTokens } from '@/util/token'
+import { SRouter, generateToken } from 'koa-cms-lib'
 import { loginRequired, refreshTokenRequiredWithUnifyException } from '@/middleware/jwt'
 import { UserDao } from '@/dao/user'
 import { PositiveIdValidator } from '@/validator/common'
@@ -39,15 +37,15 @@ userRouter.sPut('/updateUserGroup/:id', loginRequired, async (ctx) => {
   ctx.success(9)
 })
 
-userRouter.sDelete('deleteUser', '/:id', userRouter.permission('删除用户'), async (ctx) => {
+userRouter.sDelete('deleteUser', '/:id', userRouter.permission('删除用户'), loginRequired, async (ctx) => {
   const v = await new PositiveIdValidator().validate(ctx)
-  await userDao.deleteUser(v)
+  await userDao.deleteUser(ctx, v)
   ctx.success(5)
 })
 
 userRouter.sGet('refresh', '/refresh', userRouter.permission('刷新令牌'), refreshTokenRequiredWithUnifyException, async (ctx) => {
   const user = ctx.currentUser
-  const { accessToken, refreshToken } = getTokens(user.id)
+  const { accessToken, refreshToken } = generateToken(user.id)
   ctx.json({
     access_token: accessToken,
     refresh_token: refreshToken,

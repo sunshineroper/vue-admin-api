@@ -1,4 +1,5 @@
 module.exports = {
+  secret: 'abcdefghijk@!)(2',
   db: {
     database: 'cms',
     username: 'postgres',

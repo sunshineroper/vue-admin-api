@@ -1,22 +1,20 @@
 import { Op } from 'sequelize'
-import { RepeatException } from 'koa-cms-lib'
+import { NotFound, RepeatException, generateToken } from 'koa-cms-lib'
 import { has, set } from 'lodash'
-import { GroupMenuPermissionModel } from '@/model/group-menu-permission'
+import { UserIdentityModel, UserModel } from '../model/user'
+import { UserGroupModel } from '../model/user-group'
+import { GroupModel } from '../model/group'
+import { GroupPermissionModel } from '../model/group-permission'
+import { PermissionModel } from '../model/permission'
+import { generate } from '../util'
+import { GroupLevel, MENU_HIDDEN, MountType, sequelize } from '@/lib'
 import { MenuModel } from '@/model/menu'
-import { GroupLevel, MENU_HIDDEN, MountType, NotFound, sequelize } from '@/lib'
-const { UserModel, UserIdentityModel } = require('../model/user')
-const { UserGroupModel } = require('../model/user-group')
-const { GroupModel } = require('../model/group')
-
-const { GroupPermissionModel } = require('../model/group-permission')
-const { PermissionModel } = require('../model/permission')
-const { generate } = require('../util')
-const { getTokens } = require('../util/token')
+import { GroupMenuPermissionModel } from '@/model/group-menu-permission'
 
 class UserDao {
   async getTokes(v, ctx) {
     const user = await UserIdentityModel.verify(v.get('body.username'), v.get('body.password'))
-    const { accessToken, refreshToken } = getTokens(user.user_id)
+    const { accessToken, refreshToken } = generateToken(user.user_id)
     return {
       accessToken,
       refreshToken,
@@ -109,13 +107,13 @@ class UserDao {
       }
 
       await transaction.commit()
-      return true
     }
     catch (error) {
       if (transaction)
         await transaction.rollback()
       ctx.logger.error(error)
     }
+    return true
   }
 
   async getUsers(v) {
@@ -153,8 +151,8 @@ class UserDao {
     }
   }
 
-  async deleteUser(ctx) {
-    const id = ctx.params.id
+  async deleteUser(ctx, v) {
+    const id = v.get('path.id')
     const user = await UserModel.findByPk(id)
     if (!user) {
       throw new NotFound({
@@ -188,10 +186,11 @@ class UserDao {
       await transaction.commit()
     }
     catch (error) {
-      console.log(error)
       if (transaction)
         await transaction.rollback()
+      ctx.logger.error(error)
     }
+    return true
   }
 
   async updateUserGroup(v, ctx) {
@@ -246,43 +245,43 @@ class UserDao {
     await user.save()
   }
 
-  async deleteUser(v) {
-    const userId = v.get('path.id')
-    const user = await UserModel.findByPk(userId)
-    if (!user) {
-      throw new NotFound({
-        code: 10021,
-      })
-    }
-    let transaction
-    try {
-      transaction = await sequelize.transaction()
-      // 从用户组里面删除
-      await UserGroupModel.destroy({
-        where: {
-          user_id: user.id,
-        },
-        transaction,
-      })
-      await UserIdentityModel.destroy(
-        {
-          where: {
-            user_id: user.id,
-          },
-        },
-        {
-          transaction,
-        },
-      )
-      await user.destroy({
-        transaction,
-      })
-      await transaction.commit()
-    }
-    catch (error) {
-      transaction && (await transaction.callback())
-    }
-  }
+  // async deleteUser(v) {
+  //   const userId = v.get('path.id')
+  //   const user = await UserModel.findByPk(userId)
+  //   if (!user) {
+  //     throw new NotFound({
+  //       code: 10021,
+  //     })
+  //   }
+  //   let transaction
+  //   try {
+  //     transaction = await sequelize.transaction()
+  //     // 从用户组里面删除
+  //     await UserGroupModel.destroy({
+  //       where: {
+  //         user_id: user.id,
+  //       },
+  //       transaction,
+  //     })
+  //     await UserIdentityModel.destroy(
+  //       {
+  //         where: {
+  //           user_id: user.id,
+  //         },
+  //       },
+  //       {
+  //         transaction,
+  //       },
+  //     )
+  //     await user.destroy({
+  //       transaction,
+  //     })
+  //     await transaction.commit()
+  //   }
+  //   catch (error) {
+  //     transaction && (await transaction.callback())
+  //   }
+  // }
 
   async getInformation(ctx) {
     const user = ctx.currentUser
